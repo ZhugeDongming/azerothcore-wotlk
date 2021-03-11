@@ -21,4 +21,7 @@ void AddNorthrendScripts();
 void AddPetScripts();
 void AddOutdoorPvPScripts();
 
+void AddNpcbotScripts();
+
+
 #endif

@@ -704,6 +704,20 @@ public:
         {
             if (!GetCaster())
                 return;
+#ifdef NPCBOT  //workaround for bots
+                if (uint64 creatorGuid = GetCaster()->GetCreatorGUID())
+                    if (!IS_PLAYER_GUID(creatorGuid))
+                        if (Creature const* bot = ObjectAccessor::GetObjectInWorld(creatorGuid, (Creature*)NULL))
+                            if (AuraEffect const* aur = bot->GetDummyAuraEffect(SPELLFAMILY_SHAMAN, 2289, 0))
+                                if (roll_chance_i(aur->GetBaseAmount()))
+                                    //return GetTarget()->CastSpell((Unit*)NULL, SPELL_SHAMAN_TOTEM_EARTHEN_POWER, true);
+                                {
+                                    GetTarget()->CastSpell((Unit*)NULL, SPELL_SHAMAN_TOTEM_EARTHEN_POWER, true);
+                                    return;
+                                }
+                                   
+               
+#endif
             if (Player* owner = GetCaster()->GetCharmerOrOwnerPlayerOrPlayerItself())
                 if (AuraEffect* aur = owner->GetDummyAuraEffect(SPELLFAMILY_SHAMAN, 2289, 0))
                     if (roll_chance_i(aur->GetBaseAmount()))

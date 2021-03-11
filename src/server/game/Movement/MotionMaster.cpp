@@ -565,6 +565,20 @@ void MotionMaster::MoveJump(float x, float y, float z, float speedXY, float spee
     if (speedXY <= 0.1f)
         return;
 
+#ifdef NPCBOT  
+    if (_owner->GetTypeId() == TYPEID_UNIT && _owner->ToCreature()->IsNPCBot())
+    {
+        Movement::MoveSplineInit init(_owner);
+        init.MoveTo(x, y, z);
+        init.SetParabolic(speedZ/*max_height*/, 0);
+        init.SetOrientationFixed(true);
+        init.SetVelocity(speedXY);
+        init.Launch();
+        Mutate(new EffectMovementGenerator(0), MOTION_SLOT_CONTROLLED);
+        return;
+    }
+#endif // NPCBOT
+
     float moveTimeHalf = speedZ / Movement::gravity;
     float max_height = -Movement::computeFallElevation(moveTimeHalf, false, -speedZ);
 

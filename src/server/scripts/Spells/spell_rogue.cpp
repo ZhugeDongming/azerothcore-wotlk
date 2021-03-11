@@ -183,6 +183,10 @@ public:
         bool Load() override
         {
             absorbChance = GetSpellInfo()->Effects[EFFECT_0].CalcValue();
+#ifdef NPCBOT
+                if (GetUnitOwner()->GetTypeId() == TYPEID_UNIT && GetUnitOwner()->ToCreature()->IsNPCBot())
+                    return true;
+#endif
             return GetUnitOwner()->ToPlayer();
         }
 
@@ -194,6 +198,25 @@ public:
 
         void Absorb(AuraEffect* /*aurEff*/, DamageInfo& dmgInfo, uint32& absorbAmount)
         {
+#ifdef NPCBOT
+                if (Creature* bot = GetTarget()->ToCreature())
+                {
+                    if (!bot->IsNPCBot() || dmgInfo.GetDamage() < bot->GetHealth() || bot->HasSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN))
+                        return;
+
+                    bot->CastSpell(bot, SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, true);
+                    bot->AddBotSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN, 60000);
+
+                    uint32 health10 = bot->CountPctFromMaxHealth(10);
+
+                    if (bot->GetHealth() > health10)
+                        absorbAmount = dmgInfo.GetDamage() - bot->GetHealth() + health10;
+                    else
+                        absorbAmount = dmgInfo.GetDamage();
+
+                    return;
+                }
+#endif
             Player* target = GetTarget()->ToPlayer();
             if (dmgInfo.GetDamage() < target->GetHealth() || target->HasSpellCooldown(SPELL_ROGUE_CHEAT_DEATH_COOLDOWN) || !roll_chance_i(absorbChance))
                 return;
@@ -620,6 +643,10 @@ public:
         bool Load() override
         {
             Unit* caster = GetCaster();
+#ifdef NPCBOT
+                if (caster && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+                    return true;
+#endif
             return caster && caster->GetTypeId() == TYPEID_PLAYER;
         }
 
@@ -639,6 +666,17 @@ public:
                     0.0375f         // 5 points: ${($m1 + $b1*5 + 0.0375 * $AP) * 8} damage over 16 secs
                 };
 
+#ifdef NPCBOT
+                    if (caster->GetTypeId() == TYPEID_UNIT)
+                    {
+                        uint8 cp = caster->ToCreature()->GetCreatureComboPoints();
+                        if (cp > 5)
+                            cp = 5;
+
+                        amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) * attackpowerPerCombo[cp]);
+                        return;
+                    }
+#endif
                 uint8 cp = caster->ToPlayer()->GetComboPoints();
                 if (cp > 5)
                     cp = 5;

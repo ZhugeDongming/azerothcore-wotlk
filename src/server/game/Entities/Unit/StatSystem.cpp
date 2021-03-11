@@ -1069,10 +1069,43 @@ void Creature::CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, 
     float weaponMinDamage = GetWeaponDamageRange(attType, MINDAMAGE);
     float weaponMaxDamage = GetWeaponDamageRange(attType, MAXDAMAGE);
 
+#ifdef NPCBOT  //support for feral form
+    if (IsNPCBot() && IsInFeralForm())
+    {
+        float att_speed = GetAPMultiplier(attType, false);
+        uint8 lvl = getLevel();
+        if (lvl > 60) lvl = 60;
+
+        weaponMinDamage = lvl * 0.85f * att_speed;
+        weaponMaxDamage = lvl * 1.25f * att_speed;
+    }
+    else
+#endif // NPCBOT
     if (!CanUseAttackType(attType)) // disarm case
     {
+#ifdef NPCBOT  
+        // Main hand melee is always usable, but disarm reduces damage drastically
+        if (attType == BASE_ATTACK)
+        {
+            weaponMinDamage *= 0.25f;
+            weaponMaxDamage *= 0.25f;
+        }
+        else
+        {
+            weaponMinDamage = 0.0f;
+            weaponMaxDamage = 0.0f;
+        }
+    }
+    //npcbot: support for ammo
+    else if (attType == RANGED_ATTACK)
+    {
+        float att_speed = GetAPMultiplier(attType, false);
+        weaponMinDamage += GetCreatureAmmoDPS() * att_speed;
+        weaponMaxDamage += GetCreatureAmmoDPS() * att_speed;
+#else
         weaponMinDamage = 0.0f;
         weaponMaxDamage = 0.0f;
+#endif // NPCBOT
     }
 
     // pussywizard: subtract value from database till its fixed (the way it worked before creature_levelstats damage implementation)

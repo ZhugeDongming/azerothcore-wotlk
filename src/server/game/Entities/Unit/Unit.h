@@ -2478,7 +2478,10 @@ public:
 
     // Movement info
     Movement::MoveSpline* movespline;
-
+    // NPCBOT
+    bool HasReactive(ReactiveType reactive) const { return m_reactiveTimer[reactive] > 0; }
+    void ClearReactive(ReactiveType reactive);
+    // endNPCBOT
     [[nodiscard]] float GetCollisionHeight() const override;
     [[nodiscard]] float GetCollisionWidth() const override;
     [[nodiscard]] float GetCollisionRadius() const override;

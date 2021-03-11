@@ -609,6 +609,9 @@ public:
 
         bool Load() override
         {
+#ifdef NPCBOT
+                if (GetCaster() && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot()) return true;
+#endif // NPCBOT
             return GetCaster()->GetTypeId() == TYPEID_PLAYER;
         }
 
@@ -651,6 +654,10 @@ public:
         SpellCastResult CheckCast()
         {
             Unit* caster = GetCaster();
+#ifdef NPCBOT  //check for player makes no sense
+                if (!caster && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot())
+                    caster = (Player*)GetCaster();
+#endif // NPCBOT
             if (Unit* target = GetExplTargetUnit())
             {
                 if (!caster->IsFriendlyTo(target))
@@ -848,6 +855,9 @@ public:
 
         bool Load() override
         {
+#ifdef NPCBOT
+                if (GetCaster() && GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->ToCreature()->IsNPCBot()) return true;
+#endif // NPCBOT
             return GetCaster() && GetCaster()->GetTypeId() == TYPEID_PLAYER;
         }
 

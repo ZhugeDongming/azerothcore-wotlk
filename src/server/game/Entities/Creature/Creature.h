@@ -24,6 +24,10 @@ class Player;
 class WorldSession;
 class CreatureGroup;
 
+#ifdef NPCBOT
+class bot_ai;
+class bot_pet_ai;
+#endif
 enum CreatureFlagsExtra : uint32
 {
     // TODO: Implement missing flags from TC in places that custom flags from xinef&pussywizzard use flag values.
@@ -48,26 +52,36 @@ enum CreatureFlagsExtra : uint32
     CREATURE_FLAG_EXTRA_NO_SKILLGAIN        = 0x00040000,   // creature won't increase weapon skills
     CREATURE_FLAG_EXTRA_TAUNT_DIMINISH      = 0x00080000,   // Taunt is a subject to diminishing returns on this creautre
     CREATURE_FLAG_EXTRA_ALL_DIMINISH        = 0x00100000,   // Creature is subject to all diminishing returns as player are
-    CREATURE_FLAG_EXTRA_UNUSED_22           = 0x00200000,
+    CREATURE_FLAG_EXTRA_KNOCKBACK_IMMUNE    = 0x00200000,   // pussywizard: set mostly for dungeon bosses and their summons
     CREATURE_FLAG_EXTRA_AVOID_AOE           = 0x00400000,   // pussywizard: ignored by aoe attacks (for icc blood prince council npc - Dark Nucleus)
     CREATURE_FLAG_EXTRA_NO_DODGE            = 0x00800000,   // xinef: target cannot dodge
     CREATURE_FLAG_EXTRA_UNUSED_25           = 0x01000000,
     CREATURE_FLAG_EXTRA_UNUSED_26           = 0x02000000,
-    CREATURE_FLAG_EXTRA_UNUSED_27           = 0x04000000,
-    CREATURE_FLAG_EXTRA_UNUSED_28           = 0x08000000,
+    CREATURE_FLAG_EXTRA_NPCBOT              = 0x04000000,   // custom flag for NPCBots (not confirmed safe)
+    CREATURE_FLAG_EXTRA_NPCBOT_PET          = 0x08000000,   // custom flag for NPCBot pets (not confirmed safe)
     CREATURE_FLAG_EXTRA_DUNGEON_BOSS        = 0x10000000,   // creature is a dungeon boss (SET DYNAMICALLY, DO NOT ADD IN DB)
     CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING  = 0x20000000,   // creature ignore pathfinding
     CREATURE_FLAG_EXTRA_IMMUNITY_KNOCKBACK  = 0x40000000,   // creature is immune to knockback effects
     CREATURE_FLAG_EXTRA_UNUSED_32           = 0x80000000,
 
     // Masks
-    CREATURE_FLAG_EXTRA_UNUSED              = (CREATURE_FLAG_EXTRA_UNUSED_10 | CREATURE_FLAG_EXTRA_UNUSED_12 |
-                                               CREATURE_FLAG_EXTRA_UNUSED_14 | CREATURE_FLAG_EXTRA_UNUSED_17 | CREATURE_FLAG_EXTRA_UNUSED_22 |
-                                               CREATURE_FLAG_EXTRA_UNUSED_25 | CREATURE_FLAG_EXTRA_UNUSED_26 | CREATURE_FLAG_EXTRA_UNUSED_27 |
-                                               CREATURE_FLAG_EXTRA_UNUSED_28 | CREATURE_FLAG_EXTRA_UNUSED_32),
-    CREATURE_FLAG_EXTRA_DB_ALLOWED          = (0xFFFFFFFF & ~(CREATURE_FLAG_EXTRA_UNUSED | CREATURE_FLAG_EXTRA_DUNGEON_BOSS))
+    //CREATURE_FLAG_EXTRA_UNUSED              = (CREATURE_FLAG_EXTRA_UNUSED_10 | CREATURE_FLAG_EXTRA_UNUSED_12 |
+    //                                           CREATURE_FLAG_EXTRA_UNUSED_14 | CREATURE_FLAG_EXTRA_UNUSED_17 | CREATURE_FLAG_EXTRA_UNUSED_22 |
+    //                                           CREATURE_FLAG_EXTRA_UNUSED_25 | CREATURE_FLAG_EXTRA_UNUSED_26 | CREATURE_FLAG_EXTRA_UNUSED_27 |
+    //                                           CREATURE_FLAG_EXTRA_UNUSED_28 | CREATURE_FLAG_EXTRA_UNUSED_32),
+    //CREATURE_FLAG_EXTRA_DB_ALLOWED          = (0xFFFFFFFF & ~(CREATURE_FLAG_EXTRA_UNUSED | CREATURE_FLAG_EXTRA_DUNGEON_BOSS))
 };
 
+#define CREATURE_FLAG_EXTRA_DB_ALLOWED (CREATURE_FLAG_EXTRA_INSTANCE_BIND | CREATURE_FLAG_EXTRA_CIVILIAN | \
+    CREATURE_FLAG_EXTRA_NO_PARRY | CREATURE_FLAG_EXTRA_NO_PARRY_HASTEN | CREATURE_FLAG_EXTRA_NO_BLOCK | \
+    CREATURE_FLAG_EXTRA_NO_CRUSH | CREATURE_FLAG_EXTRA_NO_XP_AT_KILL | CREATURE_FLAG_EXTRA_TRIGGER | \
+    CREATURE_FLAG_EXTRA_NO_TAUNT | CREATURE_FLAG_EXTRA_WORLDEVENT | CREATURE_FLAG_EXTRA_NO_CRIT | \
+    CREATURE_FLAG_EXTRA_NO_SKILLGAIN | CREATURE_FLAG_EXTRA_TAUNT_DIMINISH | CREATURE_FLAG_EXTRA_ALL_DIMINISH | \
+    CREATURE_FLAG_EXTRA_GUARD | CREATURE_FLAG_EXTRA_KNOCKBACK_IMMUNE | CREATURE_FLAG_EXTRA_AVOID_AOE | \
+    CREATURE_FLAG_EXTRA_NPCBOT | CREATURE_FLAG_EXTRA_NPCBOT_PET | \
+    CREATURE_FLAG_EXTRA_NO_DODGE | CREATURE_FLAG_EXTRA_IGNORE_PATHFINDING)
+
+	
 #define MAX_AGGRO_RESET_TIME 10 // in seconds
 
 #define MAX_KILL_CREDIT 2
@@ -534,10 +548,11 @@ public:
         float Orientation = 0.0f; // the creature's "real" orientation while casting
     } _spellFocusInfo;
 
-    [[nodiscard]] uint32 GetShieldBlockValue() const override
-    {
-        return (getLevel() / 2 + uint32(GetStat(STAT_STRENGTH) / 20));
-    }
+    uint32 GetShieldBlockValue() const override;
+    //[[nodiscard]] uint32 GetShieldBlockValue() const override
+    //{
+    //    return (getLevel() / 2 + uint32(GetStat(STAT_STRENGTH) / 20));
+    //}
 
     [[nodiscard]] SpellSchoolMask GetMeleeDamageSchoolMask() const override { return m_meleeDamageSchoolMask; }
     void SetMeleeDamageSchool(SpellSchools school) { m_meleeDamageSchoolMask = SpellSchoolMask(1 << school); }
@@ -744,7 +759,78 @@ public:
     // Part of Evade mechanics
     [[nodiscard]] time_t GetLastDamagedTime() const { return _lastDamagedTime; }
     void SetLastDamagedTime(time_t val) { _lastDamagedTime = val; }
+#ifdef NPCBOT
+        bool LoadBotCreatureFromDB(uint32 guid, Map* map, bool addToMap = true);
+        Player* GetBotOwner() const;
+        Unit* GetBotsPet() const;
+        bool IsNPCBot() const;
+        bool IsNPCBotPet() const;
+        bool IsFreeBot() const;
+        uint8 GetBotClass() const;
+        uint16 GetBotRoles() const;
+        bot_ai* GetBotAI() const { return bot_AI; }
+        bot_pet_ai* GetBotPetAI() const { return bot_pet_AI; }
+        void SetBotAI(bot_ai* ai) { bot_AI = ai; }
+        void SetBotPetAI(bot_pet_ai* ai) { bot_pet_AI = ai; }
+        void SetBotCommandState(CommandStates st, bool force = false);
+        CommandStates GetBotCommandState() const;
+        static float GetBotDamageModPhysical();
+        static float GetBotDamageModSpell();
+        void ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const;
+        void ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
+        void ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool crit) const;
+        void ApplyBotDamageMultiplierHeal(Unit const* victim, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 stack) const;
+        void ApplyBotCritMultiplierAll(Unit const* victim, float& crit_chance, SpellInfo const* spellInfo, SpellSchoolMask schoolMask, WeaponAttackType attackType) const;
+        void ApplyCreatureSpellCostMods(SpellInfo const* spellInfo, int32& cost) const;
+        void ApplyCreatureSpellCastTimeMods(SpellInfo const* spellInfo, int32& casttime) const;
+        void ApplyCreatureSpellRadiusMods(SpellInfo const* spellInfo, float& radius) const;
+        void ApplyCreatureSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const;
+        void ApplyCreatureSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const;
+        void ApplyCreatureSpellChanceOfSuccessMods(SpellInfo const* spellInfo, float& chance) const;
+        void ApplyCreatureEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const;
+        void OnBotSummon(Creature* summon);
+        void OnBotDespawn(Creature* summon);
+        void BotStopMovement();
+        void ResetBotAI(uint8 resetType = 0);
 
+        bool CanParry() const;
+        bool CanDodge() const;
+        bool CanBlock() const;
+        bool CanCrit() const;
+        bool CanMiss() const;
+
+        float GetCreatureParryChance() const;
+        float GetCreatureDodgeChance() const;
+        float GetCreatureBlockChance() const;
+        float GetCreatureCritChance() const;
+        float GetCreatureMissChance() const;
+        float GetCreatureArmorPenetrationCoef() const;
+        float GetCreatureDamageTakenMod() const;
+        uint32 GetCreatureExpertise() const;
+        uint32 GetCreatureSpellPenetration() const;
+        uint32 GetCreatureSpellPower() const;
+        uint32 GetCreatureDefense() const;
+        int32 GetCreatureResistanceBonus(SpellSchoolMask mask) const;
+        uint8 GetCreatureComboPoints() const;
+        float GetCreatureAmmoDPS() const;
+
+        bool IsTempBot() const;
+
+        MeleeHitOutcome BotRollMeleeOutcomeAgainst(Unit const* victim, WeaponAttackType attType) const;
+
+        void CastCreatureItemCombatSpell(Unit* target, WeaponAttackType attType, uint32 procVictim, uint32 procEx);
+
+        void OnSpellGo(Spell const* spell);
+        void AddBotSpellCooldown(uint32 spellId, uint32 cooldown);
+        void ReleaseBotSpellCooldown(uint32 spellId);
+
+        void SpendBotRunes(SpellInfo const* spellInfo, bool didHit);
+
+        Item* GetBotEquips(uint8 slot) const;
+        Item* GetBotEquipsByGuid(uint64 itemGuid) const;
+
+        static bool IsBotCustomSpell(uint32 spellId);
+#endif
     bool IsFreeToMove();
     static constexpr uint32 MOVE_CIRCLE_CHECK_INTERVAL = 3000;
     static constexpr uint32 MOVE_BACKWARDS_CHECK_INTERVAL = 2000;
@@ -813,6 +899,11 @@ protected:
     bool CanAlwaysSee(WorldObject const* obj) const override;
 
 private:
+#ifdef NPCBOT
+        bot_ai* bot_AI;
+        bot_pet_ai* bot_pet_AI;
+#endif // NPCBOT
+
     void ForcedDespawn(uint32 timeMSToDespawn = 0);
 
     //WaypointMovementGenerator vars

@@ -589,6 +589,7 @@ public:
     virtual time_t GetNextTimeWithMonthAndHour(int8 month, int8 hour) = 0;
     virtual std::string const& GetRealmName() const = 0;
     virtual void SetRealmName(std::string name) = 0;
+    //virtual float GetMaxVisibleDistanceOnContinents() = 0;
 };
 
 #endif //AZEROTHCORE_IWORLD_H

@@ -34,6 +34,9 @@ union u_map_magic
     char asChar[4];
     uint32 asUInt;
 };
+#ifdef NPCBOT
+#include "botmgr.h"
+#endif
 
 u_map_magic MapMagic        = { {'M', 'A', 'P', 'S'} };
 u_map_magic MapVersionMagic = { {'v', '1', '.', '8'} };
@@ -2519,6 +2522,21 @@ uint32 Map::GetPlayersCountExceptGMs() const
     uint32 count = 0;
     for (MapRefManager::const_iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
         if (!itr->GetSource()->IsGameMaster())
+#ifdef NPCBOT  //count npcbots as group members (event if not in group)
+            if (itr->GetSource()->HaveBot() && BotMgr::LimitBots(this))
+            {
+                ++count;
+                BotMap const* botmap = itr->GetSource()->GetBotMgr()->GetBotMap();
+                for (BotMap::const_iterator itr = botmap->begin(); itr != botmap->end(); ++itr)
+                {
+                    Creature* cre = itr->second;
+                    if (!cre || !cre->IsInWorld() || cre->FindMap() != this || cre->IsTempBot())
+                        continue;
+                    ++count;
+                }
+            }
+            else
+#endif
             ++count;
     return count;
 }

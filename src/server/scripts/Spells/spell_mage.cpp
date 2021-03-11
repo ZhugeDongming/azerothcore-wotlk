@@ -1055,7 +1055,10 @@ public:
         void HandleDummy(SpellEffIndex /*effIndex*/)
         {
             Unit* caster = GetCaster();
-
+#ifdef NPCBOT  //prevent default handler for bots
+                if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+                    return;
+#endif // NPCBOT
             if (Creature* pet = ObjectAccessor::GetCreature(*caster, caster->GetPetGUID()))
                 if (!pet->IsAlive())
                     pet->ToTempSummon()->UnSummon();

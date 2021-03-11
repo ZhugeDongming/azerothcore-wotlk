@@ -4,31 +4,37 @@
  */
 
 #include "StringFormat.h"
-#include <locale>
 
-template<class Str>
-Str acore::String::Trim(const Str& s, const std::locale& loc /*= std::locale()*/)
+// Taken from https://stackoverflow.com/a/1798170
+std::string acore::String::Trim(std::string const& str, std::string_view whitespace /*= " \t"*/)
 {
-    typename Str::const_iterator first = s.begin();
-    typename Str::const_iterator end = s.end();
+    const auto strBegin = str.find_first_not_of(whitespace);
+    if (strBegin == std::string::npos)
+        return ""; // no content
 
-    while (first != end && std::isspace(*first, loc))
-        ++first;
+    auto const strEnd = str.find_last_not_of(whitespace);
+    auto const strRange = strEnd - strBegin + 1;
 
-    if (first == end)
-        return Str();
-
-    typename Str::const_iterator last = end;
-
-    do
-        --last;
-    while (std::isspace(*last, loc));
-
-    if (first != s.begin() || last + 1 != end)
-        return Str(first, last + 1);
-
-    return s;
+    return str.substr(strBegin, strRange);
 }
 
-// Template Trim
-template std::string acore::String::Trim<std::string>(const std::string& s, const std::locale& loc /*= std::locale()*/);
+std::string acore::String::Reduce(std::string const& str, std::string_view fill /*= " "*/, std::string_view whitespace /*= " \t"*/)
+{
+    // trim first
+    auto result = Trim(str, whitespace);
+
+    // replace sub ranges
+    auto beginSpace = result.find_first_of(whitespace);
+    while (beginSpace != std::string::npos)
+    {
+        const auto endSpace = result.find_first_not_of(whitespace, beginSpace);
+        const auto range = endSpace - beginSpace;
+
+        result.replace(beginSpace, range, fill);
+
+        const auto newStart = beginSpace + fill.length();
+        beginSpace = result.find_first_of(whitespace, newStart);
+    }
+
+    return result;
+}

@@ -1173,6 +1173,13 @@ public:
         {
             SpellInfo const* talentSpell = sSpellMgr->GetSpellInfo(SPELL_DK_ANTI_MAGIC_SHELL_TALENT);
             amount = talentSpell->Effects[EFFECT_0].CalcValue(GetCaster());
+#ifdef NPCBOT  //take bot attack power into account
+                if (Creature const* bot = GetCaster()->ToCreature())
+                {
+                    if (bot->IsNPCBot())
+                        amount += int32(2 * bot->GetTotalAttackPowerValue(BASE_ATTACK));
+                }
+#endif // NPCBOT
             if (Unit* totem = GetCaster())
                 if (Unit* owner = totem->ToTotem()->GetSummoner())
                     amount += int32(2 * owner->GetTotalAttackPowerValue(BASE_ATTACK));

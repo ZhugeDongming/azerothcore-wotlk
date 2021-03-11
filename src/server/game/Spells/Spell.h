@@ -486,6 +486,7 @@ public:
 
     PathGenerator* m_pathFinder; // pussywizard: for precomputing path for charge
 
+        int32 GetTimer() const { return m_timer; }
     int32 GetCastTime() const { return m_casttime; }
     bool IsAutoRepeat() const { return m_autoRepeat; }
     void SetAutoRepeat(bool rep) { m_autoRepeat = rep; }

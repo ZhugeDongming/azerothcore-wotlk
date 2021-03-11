@@ -321,6 +321,11 @@ public:
         {
             healPct = GetSpellInfo()->Effects[EFFECT_1].CalcValue();
             absorbPct = GetSpellInfo()->Effects[EFFECT_0].CalcValue();
+
+#ifdef NPCBOT  //allow for npcbots
+            if (GetUnitOwner()->GetTypeId() == TYPEID_UNIT && GetUnitOwner()->ToCreature()->IsNPCBot())
+                return true;
+#endif // NPCBOT
             return GetUnitOwner()->GetTypeId() == TYPEID_PLAYER;
         }
 
@@ -335,6 +340,40 @@ public:
             Unit* victim = GetTarget();
             int32 remainingHealth = victim->GetHealth() - dmgInfo.GetDamage();
             uint32 allowedHealth = victim->CountPctFromMaxHealth(35);
+#ifdef NPCBOT  //calc for bots
+            if (victim->GetTypeId() == TYPEID_UNIT/* && victim->ToCreature()->IsNPCBot()*/)
+            {
+                if (remainingHealth <= 0 && !victim->ToCreature()->HasSpellCooldown(PAL_SPELL_ARDENT_DEFENDER_HEAL))
+                {
+                    // Cast healing spell, completely avoid damage
+                    absorbAmount = dmgInfo.GetDamage();
+
+                    uint32 defenseSkillValue = victim->GetDefenseSkillValue();
+                    // Max heal when defense skill denies critical hits from raid bosses
+                    // Formula: max defense at level + 140 (raiting from gear)
+                    uint32 reqDefForMaxHeal = victim->getLevel() * 5 + 140;
+                    float pctFromDefense = (defenseSkillValue >= reqDefForMaxHeal)
+                        ? 1.0f
+                        : float(defenseSkillValue) / float(reqDefForMaxHeal);
+
+                    int32 healAmount = int32(victim->CountPctFromMaxHealth(int32(healPct * pctFromDefense)));
+                    victim->CastCustomSpell(victim, PAL_SPELL_ARDENT_DEFENDER_HEAL, &healAmount, NULL, NULL, true, NULL, aurEff);
+                    victim->ToCreature()->_AddCreatureSpellCooldown(PAL_SPELL_ARDENT_DEFENDER_HEAL, time(NULL) + 120);
+                    victim->ToCreature()->AddBotSpellCooldown(PAL_SPELL_ARDENT_DEFENDER_HEAL, 120 * IN_MILLISECONDS);
+                }
+                else if (remainingHealth < int32(allowedHealth))
+                {
+                    // Reduce damage that brings us under 35% (or full damage if we are already under 35%) by x%
+                    uint32 damageToReduce = (victim->GetHealth() < allowedHealth)
+                        ? dmgInfo.GetDamage()
+                        : allowedHealth - remainingHealth;
+                    absorbAmount = CalculatePct(damageToReduce, absorbPct);
+                }
+
+                return;
+            }
+#endif // NPCBOT
+
             // If damage kills us
             if (remainingHealth <= 0 && !victim->ToPlayer()->HasSpellCooldown(PAL_SPELL_ARDENT_DEFENDER_HEAL))
             {
@@ -555,6 +594,23 @@ public:
         {
             if (Unit* caster = GetCaster())
             {
+#ifdef NPCBOT  //handle for bots
+                    if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+                    {
+                        Player const* owner = caster->ToCreature()->GetBotOwner();
+                        if (!owner || owner->GetTypeId() != TYPEID_PLAYER)
+                            return false;
+
+                        if (owner->GetGroup())
+                            groupSize = owner->GetGroup()->GetMembersCount();
+                        else
+                            groupSize = 1;
+
+                        remainingAmount = (caster->CountPctFromMaxHealth(GetSpellInfo()->Effects[EFFECT_2].CalcValue(caster)) * groupSize);
+                        minHpPct = GetSpellInfo()->Effects[EFFECT_1].CalcValue(caster);
+                        return true;
+                    }
+#endif
                 if (caster->GetTypeId() == TYPEID_PLAYER)
                 {
                     if (caster->ToPlayer()->GetGroup())
@@ -1177,6 +1233,9 @@ public:
         {
             Unit* caster = GetCaster();
             if (caster->GetTypeId() != TYPEID_PLAYER)
+#ifdef NPCBOT  //this player check makes no sense
+                if (!(caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot()))
+#endif
                 return SPELL_FAILED_DONT_REPORT;
 
             if (Unit* target = GetExplTargetUnit())

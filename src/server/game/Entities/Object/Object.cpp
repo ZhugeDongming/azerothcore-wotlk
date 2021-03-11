@@ -46,6 +46,7 @@
 #include "ElunaEventMgr.h"
 #include "LuaEngine.h"
 #endif
+#include "FreedomCore.h"
 
 uint32 GuidHigh2TypeId(uint32 guid_hi)
 {
@@ -2269,6 +2270,11 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
             summon = new Puppet(properties, summoner ? summoner->GetGUID() : 0);
             break;
         case UNIT_MASK_TOTEM:
+#ifdef NPCBOT  //totem emul step 1
+            if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+                summon = new Totem(properties, summoner->ToCreature()->GetBotOwner()->GetGUID());
+            else
+#endif // NPCBOT
             summon = new Totem(properties, summoner ? summoner->GetGUID() : 0);
             break;
         case UNIT_MASK_MINION:
@@ -2285,6 +2291,10 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
         return nullptr;
     }
 
+#ifdef NPCBOT  //totem emul step 2
+    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+        summon->SetCreatorGUID(summoner->GetGUID()); // see TempSummon::InitStats()
+#endif
     summon->SetUInt32Value(UNIT_CREATED_BY_SPELL, spellId);
 
     summon->SetHomePosition(pos);
@@ -2292,6 +2302,10 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     summon->InitStats(duration);
     AddToMap(summon->ToCreature(), (IS_PLAYER_GUID(summon->GetOwnerGUID()) || (summoner && summoner->GetTransport())));
     summon->InitSummon();
+#ifdef NPCBOT  //totem emul step 3
+    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+        summoner->ToCreature()->OnBotSummon(summon);
+#endif
 
     //ObjectAccessor::UpdateObjectVisibility(summon);
 

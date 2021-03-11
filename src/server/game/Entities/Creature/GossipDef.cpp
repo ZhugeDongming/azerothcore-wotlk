@@ -11,6 +11,7 @@
 #include "QuestDef.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "FreedomCore.h"
 
 GossipMenu::GossipMenu()
 {

@@ -936,6 +936,25 @@ void AuraEffect::UpdatePeriodic(Unit* caster)
                         case 49472: // Drink Coffee
                         case 57073:
                         case 61830:
+#ifdef NPCBOT  //fix normal drink spells for bots
+                            if (caster && caster->GetTypeId() == TYPEID_UNIT)
+                            {
+                                if (AuraEffect* aurEff = GetBase()->GetEffect(0))
+                                {
+                                    if (aurEff->GetAuraType() != SPELL_AURA_MOD_POWER_REGEN)
+                                    {
+                                        m_isPeriodic = false;
+                                        sLog->outError("Aura %d structure has been changed - first aura is no longer SPELL_AURA_MOD_POWER_REGEN", GetId());
+                                    }
+                                    else
+                                    {
+                                        aurEff->ChangeAmount(GetAmount());
+                                        m_isPeriodic = false;
+                                    }
+                                }
+                                break;
+                            }
+#endif
                             if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
                                 return;
                             // Get SPELL_AURA_MOD_POWER_REGEN aura from spell
@@ -2941,6 +2960,16 @@ void AuraEffect::HandleAuraModTotalThreat(AuraApplication const* aurApp, uint8 m
         return;
 
     Unit* target = aurApp->GetTarget();
+#ifdef NPCBOT  //handle for bots
+    if (target->IsAlive() && target->GetTypeId() == TYPEID_UNIT &&
+        (target->ToCreature()->IsNPCBot() || target->ToCreature()->IsNPCBotPet()))
+    {
+        Unit* caster = GetCaster();
+        if (caster && caster->IsAlive())
+            target->getHostileRefManager().addTempThreat((float)GetAmount(), apply);
+        return;
+    }
+#endif
 
     if (!target->IsAlive() || target->GetTypeId() != TYPEID_PLAYER)
         return;
@@ -6166,6 +6195,13 @@ void AuraEffect::HandlePeriodicDamageAurasTick(Unit* target, Unit* caster) const
         if (GetBase()->GetType() == DYNOBJ_AURA_TYPE && caster)
             damage = caster->SpellDamageBonusDone(target, GetSpellInfo(), damage, DOT, 0.0f, GetBase()->GetStackAmount());
         damage = target->SpellDamageBonusTaken(caster, GetSpellInfo(), damage, DOT, GetBase()->GetStackAmount());
+#ifdef NPCBOT  //Black Arrow damage on targets below 20%
+        if (m_spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK && (m_spellInfo->SpellFamilyFlags[0] & 0x1) &&
+            target->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT))
+        {
+            damage *= 5;
+        }
+#endif
 
         // Calculate armor mitigation
         if (Unit::IsDamageReducedByArmor(GetSpellInfo()->GetSchoolMask(), GetSpellInfo(), GetEffIndex()))

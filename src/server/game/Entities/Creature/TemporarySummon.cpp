@@ -176,6 +176,18 @@ void TempSummon::InitStats(uint32 duration)
     if (!m_Properties)
         return;
 
+#ifdef NPCBOT  //skip deleting/reassigning player totems
+    //normally no creatorGUID is assigned at this point, perform full check anyway for compatibilty reasons
+    bool botTotemCast = false;
+    if (m_Properties->Slot && m_Properties->Slot >= SUMMON_SLOT_TOTEM && m_Properties->Slot < MAX_TOTEM_SLOT &&
+        GetCreatorGUID() && IS_CREATURE_GUID(GetCreatorGUID()))
+    {
+        Unit* bot = sObjectAccessor->FindUnit(GetCreatorGUID());
+        if (bot && bot->ToCreature()->IsNPCBot())
+            botTotemCast = true;
+    }
+    if (!botTotemCast)
+#endif
     if (owner)
     {
         if (uint32 slot = m_Properties->Slot)
@@ -241,6 +253,18 @@ void TempSummon::UnSummon(uint32 msTime)
     Unit* owner = GetSummoner();
     if (owner && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsAIEnabled)
         owner->ToCreature()->AI()->SummonedCreatureDespawn(this);
+#ifdef NPCBOT  
+    //if (IsNPCBot())
+    //{
+    //    //sLog->outError("TempSummon::UnSummon(): Trying to unsummon Bot %s (guidLow: %u owner: %s)", GetName().c_str(), GetGUIDLow(), GetBotOwner()->GetName().c_str());
+    //    if (IsTempBot())
+    //        if (IS_CREATURE_GUID(GetCreatorGUID()))
+    //            if (Unit* bot = sObjectAccessor->FindUnit(GetCreatorGUID()))
+    //                if (bot->ToCreature()->IsNPCBot())
+    //                    bot->ToCreature()->OnBotDespawn(this);
+    //    return;
+    //}
+#endif
 
     AddObjectToRemoveList();
 }

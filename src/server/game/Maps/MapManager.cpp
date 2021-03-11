@@ -31,6 +31,9 @@
 #ifdef ELUNA
 #include "LuaEngine.h"
 #endif
+#ifdef NPCBOT  
+#include "botmgr.h"
+#endif // NPCBOT
 
 MapManager::MapManager()
 {
@@ -56,6 +59,9 @@ void MapManager::Initialize()
     // Start mtmaps if needed
     if (num_threads > 0)
         m_updater.activate(num_threads);
+#ifdef NPCBOT  //load bots
+    BotMgr::Initialize();
+#endif
 }
 
 void MapManager::InitializeVisibilityDistanceInfo()

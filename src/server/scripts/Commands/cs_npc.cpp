@@ -201,6 +201,15 @@ public:
         uint32 id  = atoi(charID);
         if (!sObjectMgr->GetCreatureTemplate(id))
             return false;
+#ifdef NPCBOT  //prevent spawning bots through this command
+        CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(id);
+        if (cinfo && ((cinfo->flags_extra & CREATURE_FLAG_EXTRA_NPCBOT) || (cinfo->flags_extra & CREATURE_FLAG_EXTRA_NPCBOT_PET)))
+        {
+            handler->PSendSysMessage("You tried to spawn creature %u, which is part of NPCBots mod. To spawn bots use '.npcbot spawn' instead.", id);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+#endif
 
         Player* chr = handler->GetSession()->GetPlayer();
         float x = chr->GetPositionX();
@@ -485,6 +494,15 @@ public:
             handler->SetSentErrorMessage(true);
             return false;
         }
+
+#ifdef NPCBOT
+        if (unit->IsNPCBot() || unit->IsNPCBotPet())
+        {
+            handler->SendSysMessage("Selected creature has botAI assigned, use '.npcbot delete' instead");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+#endif
 
         // Delete the creature
         unit->CombatStop();
