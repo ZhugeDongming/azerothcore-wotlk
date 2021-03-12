@@ -987,6 +987,10 @@ Player::Player(WorldSession* session): Unit(true), m_mover(this)
     m_applyResilience = true;
 
     m_isInstantFlightOn = true;
+//Deadwalk Fix Bug
+#ifdef NPCBOT
+    _botMgr = NULL;
+#endif
 }
 
 Player::~Player()
@@ -1023,7 +1027,7 @@ Player::~Player()
     delete m_achievementMgr;
     delete m_reputationMgr;
 #ifdef NPCBOT
-    if (_botMgr)
+    if (_botMgr != NULL)
     {
         delete _botMgr;
         _botMgr = NULL;
