@@ -430,6 +430,11 @@ bool Group::AddMember(Player* player)
 
     SendUpdate();
 
+#ifdef NPCBOT  //check if trying to add bot
+    if (IS_PLAYER_GUID(player->GetGUID()))
+    {
+#endif // NPCBOT
+    //npcbot - check 2
     if (player)
     {
         sScriptMgr->OnGroupAddMember(this, player->GetGUID());
@@ -509,7 +514,9 @@ bool Group::AddMember(Player* player)
         if (m_maxEnchantingLevel < player->GetSkillValue(SKILL_ENCHANTING))
             m_maxEnchantingLevel = player->GetSkillValue(SKILL_ENCHANTING);
     }
-
+#ifdef NPCBOT  
+    }
+#endif // NPCBOT
     return true;
 }
 
